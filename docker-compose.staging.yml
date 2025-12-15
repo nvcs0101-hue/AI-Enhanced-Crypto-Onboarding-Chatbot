@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=staging
+      - FLASK_DEBUG=false
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma_db
+      - SECRET_KEY=${SECRET_KEY}
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/chatbot_staging
+      - SENTRY_DSN=${SENTRY_DSN}
+      - ENVIRONMENT=staging
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - staging-network
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-staging-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-network
+
+  # PostgreSQL for analytics
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=chatbot_staging
+    volumes:
+      - postgres-staging-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-network
+
+  # Telegram bot (staging)
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python telegram_bot.py
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_STAGING}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma_db
+      - ENVIRONMENT=staging
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - staging-network
+
+  # Discord bot (staging)
+  discord-bot:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: python discord_bot.py
+    environment:
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN_STAGING}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - CHROMA_PERSIST_DIRECTORY=/app/data/chroma_db
+      - ENVIRONMENT=staging
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - staging-network
+
+volumes:
+  redis-staging-data:
+    driver: local
+  postgres-staging-data:
+    driver: local
+
+networks:
+  staging-network:
+    driver: bridge

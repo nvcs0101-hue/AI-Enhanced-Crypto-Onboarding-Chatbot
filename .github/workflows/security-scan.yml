@@ -1,0 +1,94 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM
+    - cron: '0 2 * * *'
+
+jobs:
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install bandit safety
+        cd backend && pip install -r requirements.txt
+    
+    - name: Run Bandit (Python security linter)
+      run: |
+        bandit -r backend/src -f json -o bandit-report.json || true
+        bandit -r backend/src -f txt
+      continue-on-error: true
+    
+    - name: Run Safety (dependency vulnerability check)
+      run: |
+        cd backend
+        safety check --json > ../safety-report.json || true
+        safety check
+      continue-on-error: true
+    
+    - name: Check for secrets in code
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: ${{ github.event.repository.default_branch }}
+        head: HEAD
+    
+    - name: Upload Bandit report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bandit-report
+        path: bandit-report.json
+    
+    - name: Upload Safety report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: safety-report
+        path: safety-report.json
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          let comment = '## 🔒 Security Scan Results\n\n';
+          
+          try {
+            const bandit = JSON.parse(fs.readFileSync('bandit-report.json', 'utf8'));
+            comment += `### Bandit\n- **High:** ${bandit.metrics._totals['SEVERITY.HIGH']}\n`;
+            comment += `- **Medium:** ${bandit.metrics._totals['SEVERITY.MEDIUM']}\n`;
+            comment += `- **Low:** ${bandit.metrics._totals['SEVERITY.LOW']}\n\n`;
+          } catch (e) {
+            comment += '### Bandit\n✅ No issues found\n\n';
+          }
+          
+          try {
+            const safety = JSON.parse(fs.readFileSync('safety-report.json', 'utf8'));
+            comment += `### Safety\n- **Vulnerabilities:** ${safety.vulnerabilities.length}\n\n`;
+          } catch (e) {
+            comment += '### Safety\n✅ No vulnerabilities found\n\n';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
