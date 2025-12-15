@@ -1,0 +1,53 @@
+# Core dependencies
+flask==3.0.0
+flask-cors==4.0.0
+flask-limiter==3.5.0
+python-dotenv==1.0.0
+
+# LangChain and RAG components
+langchain==0.1.0
+langchain-community==0.0.13
+langchain-core==0.1.10
+langchain-openai==0.0.5
+langchain-huggingface==0.0.1
+
+# Vector database and embeddings
+chromadb==0.4.22
+sentence-transformers==2.3.1
+
+# OpenAI
+openai==1.7.0
+
+# Google AI
+google-generativeai==0.3.2
+langchain-google-genai==0.0.6
+
+# Perplexity (via OpenAI-compatible API)
+# Uses openai package with custom base_url
+
+# Bot integrations
+python-telegram-bot==20.7
+discord.py==2.3.2
+
+# Utilities
+requests==2.31.0
+aiohttp==3.9.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.23.2
+pytest-cov==4.1.0
+
+# Code quality
+flake8==7.0.0
+black==23.12.1
+
+# Production server
+gunicorn==21.2.0
+
+# Database (optional, for analytics)
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+
+# Caching
+redis==5.0.1
