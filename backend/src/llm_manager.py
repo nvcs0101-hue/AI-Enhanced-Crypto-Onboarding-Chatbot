@@ -166,7 +166,7 @@ class LLMManager:
         
         elif provider == LLMProvider.GEMINI:
             return ChatGoogleGenerativeAI(
-                model="gemini-pro",
+                model="gemini-2.5-flash",
                 temperature=temperature,
                 google_api_key=os.getenv('GOOGLE_API_KEY')
             )

@@ -18,7 +18,7 @@ from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 from src.llm_manager import get_llm_manager
 from src.analytics import get_analytics
@@ -92,7 +92,16 @@ class CryptoRAGPipeline:
             self.retriever = self.vectorstore.as_retriever(
                 search_type="similarity",
                 search_kwargs={"k": self.retrieval_k}
-            ) manager with multi-provider support."""
+            )
+            
+            logger.info("Vector store retriever initialized")
+            
+        except Exception as e:
+            logger.error(f"Failed to load vector store: {e}")
+            raise
+    
+    def _initialize_llm(self):
+        """Initialize LLM manager with multi-provider support."""
         try:
             # Use LLM manager instead of single provider
             self.llm_manager = get_llm_manager()
@@ -103,15 +112,7 @@ class CryptoRAGPipeline:
             logger.info("Initialized RAG pipeline with multi-LLM support")
             
         except Exception as e:
-            logger.error(f"Error initializing LLM managerodel: {self.llm_model}")
-            self.llm = ChatOpenAI(
-                model=self.llm_model,
-                temperature=self.llm_temperature,
-                api_key=api_key
-            )
-            
-        except Exception as e:
-            logger.error(f"Error initializing LLM: {str(e)}")
+            logger.error(f"Error initializing LLM manager: {str(e)}")
             raise
     
     def _create_prompt_template(self) -> PromptTemplate:
@@ -136,7 +137,7 @@ Instructions:
 - Be clear, concise, and beginner-friendly
 - Use step-by-step explanations for processes
 - Highlight security considerations when relevant
-- If you don't know something, say so honestly
+- If you do not know something, say so honestly
 - Format your response with markdown for readability
 
 Answer:"""
@@ -207,7 +208,7 @@ Instructions:
 - Be clear, concise, and beginner-friendly
 - Use step-by-step explanations for processes
 - Highlight security considerations when relevant
-- If you don't know something, say so honestly
+- If you do not know something, say so honestly
 - Format your response with markdown for readability
 - Never make guarantees about financial returns or safety"""
             
