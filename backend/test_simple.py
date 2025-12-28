@@ -1,6 +1,9 @@
 """Simple test of RAG pipeline"""
 import os
-os.environ['GOOGLE_API_KEY'] = 'REDACTED_GOOGLE_API_KEY'
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv('.env.secrets')
 
 from langchain_chroma import Chroma
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings

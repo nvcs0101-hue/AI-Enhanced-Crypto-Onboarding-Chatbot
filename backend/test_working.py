@@ -1,8 +1,12 @@
 """Test chatbot with correct Gemini model"""
 import os
+from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
+
+# Load environment variables
+load_dotenv('.env.secrets')
 
 print('🤖 AI-Enhanced Crypto Onboarding Chatbot Test')
 print('=' * 60)
@@ -18,7 +22,7 @@ print(f'\n📚 Found {len(docs)} relevant documents from knowledge base')
 # Initialize Gemini with correct model name
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    google_api_key='REDACTED_GOOGLE_API_KEY',
+    google_api_key=os.getenv('GOOGLE_API_KEY'),
     temperature=0.3
 )
 
